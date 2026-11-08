@@ -1,0 +1,10 @@
+{
+  "name": "@worksphere/project-service", "version": "1.0.0", "main": "src/server.js",
+  "scripts": { "start": "node src/server.js" },
+  "dependencies": {
+    "@worksphere/docs": "*", "@worksphere/errors": "*", "@worksphere/event-contracts": "*", "@worksphere/kafka": "*",
+    "@worksphere/logger": "*", "@worksphere/metrics": "*", "@worksphere/outbox": "*", "@worksphere/rbac": "*",
+    "@worksphere/redis": "*", "@worksphere/resilience": "*", "@worksphere/tenant-repo": "*", "@worksphere/tracing": "*",
+    "@worksphere/validation": "*", "express": "^4.21.0", "helmet": "^8.0.0", "mongoose": "^8.7.0", "zod": "^3.23.8"
+  }
+}

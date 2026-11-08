@@ -1,0 +1,27 @@
+{
+  "name": "worksphere",
+  "private": true,
+  "workspaces": [
+    "shared/*",
+    "services/*"
+  ],
+  "scripts": {
+    "test": "jest --passWithNoTests",
+    "up": "docker compose up --build",
+    "test:e2e": "E2E=1 jest e2e --testPathIgnorePatterns=/node_modules/",
+    "test:all": "npm test && npm --prefix frontend/react-app test"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0",
+    "ioredis-mock": "^8.9.0"
+  },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/e2e/",
+      "/frontend/"
+    ],
+    "testEnvironment": "node"
+  }
+}

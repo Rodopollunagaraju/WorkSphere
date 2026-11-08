@@ -1,0 +1,1 @@
+{ "name": "@worksphere/resilience", "version": "1.0.0", "main": "src/index.js", "dependencies": { "opossum": "^8.1.4" } }

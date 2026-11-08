@@ -1,0 +1,3 @@
+apiVersion: 1
+providers:
+  - { name: worksphere, folder: WorkSphere, type: file, options: { path: /var/lib/grafana/dashboards } }

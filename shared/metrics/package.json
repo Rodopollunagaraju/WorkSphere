@@ -1,0 +1,1 @@
+{ "name": "@worksphere/metrics", "version": "1.0.0", "main": "src/index.js", "dependencies": { "prom-client": "^15.1.3" } }

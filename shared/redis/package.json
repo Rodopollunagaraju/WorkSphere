@@ -1,0 +1,1 @@
+{ "name": "@worksphere/redis", "version": "1.0.0", "main": "src/index.js", "dependencies": { "ioredis": "^5.4.1" } }

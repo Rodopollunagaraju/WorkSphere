@@ -1,0 +1,1 @@
+{ "name": "@worksphere/event-contracts", "version": "1.0.0", "main": "src/index.js", "dependencies": { "zod": "^3.23.8" } }

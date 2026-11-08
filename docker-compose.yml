@@ -1,0 +1,192 @@
+name: worksphere
+
+x-env: &common-env
+  KAFKA_BROKERS: redpanda:9092
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+  INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?set INTERNAL_SERVICE_TOKEN in .env}
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+
+x-app: &app
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "node", "-e", "fetch('http://localhost:'+process.env.PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 20s
+
+x-needs-infra: &needs-infra
+  mongo: { condition: service_healthy }
+  redis: { condition: service_healthy }
+  redpanda-init: { condition: service_completed_successfully }
+
+services:
+  # ---------------- infrastructure ----------------
+  mongo:
+    image: mongo:7
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports: ["27017:27017"]
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      # initiates the single-node replica set on first run (required for transactions / outbox)
+      test: >
+        mongosh --quiet --eval
+        "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }"
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 10 }
+
+  redpanda:
+    image: redpandadata/redpanda:v24.1.7
+    command: [redpanda, start, --smp=1, --memory=512M, --overprovisioned, --mode=dev-container,
+      "--kafka-addr=PLAINTEXT://0.0.0.0:9092", "--advertise-kafka-addr=PLAINTEXT://redpanda:9092"]
+    ports: ["9092:9092"]
+    volumes: [redpanda-data:/var/lib/redpanda/data]
+    healthcheck: { test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"], interval: 10s, retries: 15 }
+
+  redpanda-init:
+    image: redpandadata/redpanda:v24.1.7
+    depends_on: { redpanda: { condition: service_healthy } }
+    volumes: ["./scripts/create-topics.sh:/create-topics.sh:ro"]
+    entrypoint: ["/bin/sh", "/create-topics.sh"]
+    restart: "no"
+
+  redpanda-console:
+    image: redpandadata/console:v2.6.0
+    depends_on: { redpanda: { condition: service_healthy } }
+    environment: { KAFKA_BROKERS: "redpanda:9092" }
+    ports: ["8080:8080"]
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment: { MINIO_ROOT_USER: worksphere, MINIO_ROOT_PASSWORD: worksphere-secret }
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [minio-data:/data]
+    healthcheck: { test: ["CMD", "mc", "ready", "local"], interval: 10s, retries: 10 }
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on: { minio: { condition: service_healthy } }
+    entrypoint: ["/bin/sh", "-c", "mc alias set local http://minio:9000 worksphere worksphere-secret && mc mb -p local/worksphere-attachments"]
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit
+    ports: ["8025:8025", "1025:1025"]
+
+  # ---------------- application services ----------------
+  auth-service:
+    <<: *app
+    build: { context: ., dockerfile: infrastructure/docker/service.Dockerfile, args: { SERVICE: auth-service } }
+    environment: { <<: *common-env, SERVICE_NAME: auth-service, OTEL_SERVICE_NAME: auth-service, PORT: 4001, MONGO_URI: "mongodb://mongo:27017/worksphere_auth?replicaSet=rs0" }
+    depends_on: *needs-infra
+
+  project-service:
+    <<: *app
+    build: { context: ., dockerfile: infrastructure/docker/service.Dockerfile, args: { SERVICE: project-service } }
+    environment: { <<: *common-env, SERVICE_NAME: project-service, OTEL_SERVICE_NAME: project-service, CACHE_DISABLED: "${CACHE_DISABLED:-0}", PORT: 4002, MONGO_URI: "mongodb://mongo:27017/worksphere_projects?replicaSet=rs0", AUTH_SERVICE_URL: "http://auth-service:4001" }
+    depends_on: { <<: *needs-infra, auth-service: { condition: service_healthy } }
+
+  task-service:
+    <<: *app
+    build: { context: ., dockerfile: infrastructure/docker/service.Dockerfile, args: { SERVICE: task-service } }
+    environment:
+      <<: *common-env
+      SERVICE_NAME: task-service
+      CACHE_DISABLED: "${CACHE_DISABLED:-0}"
+      OTEL_SERVICE_NAME: task-service
+      PORT: 4003
+      MONGO_URI: "mongodb://mongo:27017/worksphere_tasks?replicaSet=rs0"
+      PROJECT_SERVICE_URL: "http://project-service:4002"
+      S3_ENDPOINT: "http://minio:9000"
+      S3_PUBLIC_ENDPOINT: "http://localhost:9000"
+      S3_BUCKET: worksphere-attachments
+      S3_ACCESS_KEY: worksphere
+      S3_SECRET_KEY: worksphere-secret
+    depends_on: { <<: *needs-infra, project-service: { condition: service_healthy }, minio-init: { condition: service_completed_successfully } }
+
+  notification-service:
+    <<: *app
+    build: { context: ., dockerfile: infrastructure/docker/service.Dockerfile, args: { SERVICE: notification-service } }
+    environment: { <<: *common-env, SERVICE_NAME: notification-service, OTEL_SERVICE_NAME: notification-service, PORT: 4004, MONGO_URI: "mongodb://mongo:27017/worksphere_notifications?replicaSet=rs0", SMTP_HOST: mailpit, SMTP_PORT: 1025, APP_URL: "http://localhost:5173" }
+    depends_on: *needs-infra
+
+  analytics-service:
+    <<: *app
+    build: { context: ., dockerfile: infrastructure/docker/service.Dockerfile, args: { SERVICE: analytics-service } }
+    environment: { <<: *common-env, SERVICE_NAME: analytics-service, OTEL_SERVICE_NAME: analytics-service, PORT: 4005, MONGO_URI: "mongodb://mongo:27017/worksphere_analytics?replicaSet=rs0" }
+    depends_on: *needs-infra
+
+  # The ONLY app service published to the host: all identity headers are trusted inside the network.
+  api-gateway:
+    <<: *app
+    build: { context: ., dockerfile: infrastructure/docker/service.Dockerfile, args: { SERVICE: api-gateway } }
+    environment:
+      <<: *common-env
+      SERVICE_NAME: api-gateway
+      OTEL_SERVICE_NAME: api-gateway
+      PORT: 3000
+      AUTH_SERVICE_URL: "http://auth-service:4001"
+      PROJECT_SERVICE_URL: "http://project-service:4002"
+      TASK_SERVICE_URL: "http://task-service:4003"
+      NOTIFICATION_SERVICE_URL: "http://notification-service:4004"
+      ANALYTICS_SERVICE_URL: "http://analytics-service:4005"
+    ports: ["3000:3000"]
+    depends_on:
+      auth-service: { condition: service_healthy }
+      project-service: { condition: service_healthy }
+      task-service: { condition: service_healthy }
+      notification-service: { condition: service_healthy }
+      analytics-service: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  frontend:
+    build: { context: frontend/react-app }
+    ports: ["5173:80"]
+    depends_on: [api-gateway]
+
+  # ---------------- observability ----------------
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes: ["./infrastructure/prometheus:/etc/prometheus:ro"]
+    ports: ["9090:9090"]
+
+  loki:
+    image: grafana/loki:3.1.1
+    command: ["-config.file=/etc/loki/config.yml"]
+    volumes: ["./infrastructure/loki/config.yml:/etc/loki/config.yml:ro"]
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./infrastructure/promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: [loki]
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    environment: { COLLECTOR_OTLP_ENABLED: "true" }
+    ports: ["16686:16686"]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment: { GF_AUTH_ANONYMOUS_ENABLED: "true", GF_AUTH_ANONYMOUS_ORG_ROLE: Admin }
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3001:3000"]
+    depends_on: [prometheus, loki, jaeger]
+
+volumes:
+  mongo-data:
+  redpanda-data:
+  minio-data:

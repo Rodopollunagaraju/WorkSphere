@@ -1,0 +1,1 @@
+{ "name": "@worksphere/rbac", "version": "1.0.0", "main": "src/index.js", "dependencies": { "@worksphere/errors": "*" } }

@@ -1,0 +1,4 @@
+{ "name": "@worksphere/kafka", "version": "1.0.0", "main": "src/index.js",
+  "bin": { "replay-dlq": "src/replay-dlq.js" },
+  "dependencies": { "kafkajs": "^2.2.4", "@worksphere/event-contracts": "*" },
+  "peerDependencies": { "mongoose": "^8.0.0" } }

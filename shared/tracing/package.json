@@ -1,0 +1,5 @@
+{ "name": "@worksphere/tracing", "version": "1.0.0", "main": "src/register.js",
+  "dependencies": { "@opentelemetry/sdk-node": "^0.53.0", "@opentelemetry/exporter-trace-otlp-http": "^0.53.0",
+    "@opentelemetry/instrumentation-http": "^0.53.0", "@opentelemetry/instrumentation-express": "^0.43.0",
+    "@opentelemetry/instrumentation-mongodb": "^0.47.0", "@opentelemetry/instrumentation-ioredis": "^0.43.0",
+    "@opentelemetry/instrumentation-kafkajs": "^0.3.0" } }

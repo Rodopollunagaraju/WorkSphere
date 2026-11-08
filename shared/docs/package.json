@@ -1,0 +1,1 @@
+{ "name": "@worksphere/docs", "version": "1.0.0", "main": "src/index.js", "dependencies": { "swagger-ui-express": "^5.0.1" } }

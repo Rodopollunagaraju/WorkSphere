@@ -1,0 +1,11 @@
+{
+  "name": "@worksphere/notification-service", "version": "1.0.0", "main": "src/server.js",
+  "scripts": { "start": "node src/server.js" },
+  "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0", "@worksphere/docs": "*", "@worksphere/errors": "*", "@worksphere/event-contracts": "*",
+    "@worksphere/kafka": "*", "@worksphere/logger": "*", "@worksphere/metrics": "*", "@worksphere/rbac": "*", "@worksphere/read-models": "*",
+    "@worksphere/redis": "*", "@worksphere/tenant-repo": "*", "@worksphere/tracing": "*", "@worksphere/validation": "*",
+    "express": "^4.21.0", "helmet": "^8.0.0", "jsonwebtoken": "^9.0.2", "mongoose": "^8.7.0", "nodemailer": "^6.9.15",
+    "socket.io": "^4.8.0", "zod": "^3.23.8"
+  }
+}

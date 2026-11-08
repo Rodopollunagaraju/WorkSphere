@@ -1,0 +1,3 @@
+{ "name": "@worksphere/outbox", "version": "1.0.0", "main": "src/index.js",
+  "dependencies": { "@worksphere/event-contracts": "*", "@opentelemetry/api": "^1.9.0" },
+  "peerDependencies": { "mongoose": "^8.0.0" } }

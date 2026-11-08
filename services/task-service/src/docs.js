@@ -1,0 +1,16 @@
+module.exports = [
+  { method: 'POST', path: '/tasks', summary: 'Create task', role: 'MEMBER', body: { projectId: 'string', title: 'string', description: 'string?', assignedTo: 'string?', priority: 'string?', dueDate: 'string?' } },
+  { method: 'GET', path: '/tasks', summary: 'List tasks (projectId required; cursor pagination)', role: 'VIEWER' },
+  { method: 'GET', path: '/tasks/:id', summary: 'Get task', role: 'VIEWER' },
+  { method: 'PATCH', path: '/tasks/:id', summary: 'Update task (send the version you saw; 409 on conflict)', role: 'MEMBER', body: { version: 'integer', title: 'string?', description: 'string?', priority: 'string?', dueDate: 'string?' } },
+  { method: 'DELETE', path: '/tasks/:id', summary: 'Delete task (creator or ADMIN)', role: 'MEMBER' },
+  { method: 'POST', path: '/tasks/:id/assign', summary: 'Assign or unassign', role: 'MEMBER', body: { assignedTo: 'string', version: 'integer?' } },
+  { method: 'POST', path: '/tasks/:id/status', summary: 'Change status (workflow enforced)', role: 'MEMBER', body: { status: 'string', version: 'integer?' } },
+  { method: 'POST', path: '/tasks/:id/comments', summary: 'Add comment; @<userId> mentions notify', role: 'MEMBER', body: { body: 'string' } },
+  { method: 'GET', path: '/tasks/:id/comments', summary: 'List comments', role: 'VIEWER' },
+  { method: 'GET', path: '/tasks/:id/history', summary: 'Task history', role: 'VIEWER' },
+  { method: 'POST', path: '/tasks/:id/attachments/presign', summary: 'Get presigned upload URL', role: 'MEMBER', body: { fileName: 'string', contentType: 'string', size: 'integer' } },
+  { method: 'POST', path: '/tasks/:id/attachments/:attId/confirm', summary: 'Confirm upload', role: 'MEMBER' },
+  { method: 'GET', path: '/tasks/:id/attachments', summary: 'List attachments', role: 'VIEWER' },
+  { method: 'GET', path: '/tasks/:id/attachments/:attId/download', summary: 'Presigned download URL', role: 'VIEWER' },
+];

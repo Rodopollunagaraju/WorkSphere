@@ -1,0 +1,18 @@
+module.exports = [
+  { method: 'POST', path: '/register', summary: 'Register a user', public: true, body: { name: 'string', email: 'string', password: 'string' } },
+  { method: 'POST', path: '/login', summary: 'Log in', public: true, body: { email: 'string', password: 'string' } },
+  { method: 'POST', path: '/refresh', summary: 'Rotate refresh token (optionally get an org-scoped access token)', public: true, body: { refreshToken: 'string', orgId: 'string?' } },
+  { method: 'POST', path: '/logout', summary: 'Revoke a refresh token', body: { refreshToken: 'string' } },
+  { method: 'GET', path: '/me', summary: 'Current user' },
+  { method: 'GET', path: '/sessions', summary: 'List active sessions' },
+  { method: 'DELETE', path: '/sessions', summary: 'Revoke all sessions' },
+  { method: 'POST', path: '/organizations', summary: 'Create organization (caller becomes OWNER)', body: { name: 'string' } },
+  { method: 'GET', path: '/organizations', summary: 'List my organizations' },
+  { method: 'POST', path: '/switch-org', summary: 'Get an org-scoped access token', body: { orgId: 'string' } },
+  { method: 'PATCH', path: '/organizations/plan', summary: 'Change plan (rate limits follow it)', role: 'OWNER', body: { plan: 'string', rateLimit: 'integer?' } },
+  { method: 'GET', path: '/members', summary: 'List members', role: 'VIEWER' },
+  { method: 'POST', path: '/invites', summary: 'Invite a member', role: 'ADMIN', body: { email: 'string', role: 'string' } },
+  { method: 'POST', path: '/invites/accept', summary: 'Accept an invite', body: { token: 'string' } },
+  { method: 'PATCH', path: '/members/:userId/role', summary: 'Change a role', role: 'ADMIN', body: { role: 'string' } },
+  { method: 'DELETE', path: '/members/:userId', summary: 'Remove a member', role: 'ADMIN' },
+];
